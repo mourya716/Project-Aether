@@ -26,16 +26,16 @@
 
         /* CONTROLS (Center Bottom) */
         #controls {
-            pointer-events: auto; display: flex; gap: 15px; justify-content: center; align-items: center;
+            pointer-events: auto; display: flex; gap: 10px; justify-content: center; align-items: center;
             background: rgba(15, 23, 42, 0.6); padding: 15px 25px; border-radius: 50px;
             backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1);
-            margin-bottom: 20px;
+            margin-bottom: 20px; flex-wrap: wrap;
         }
 
         .mode-btn {
             background: transparent; border: 1px solid rgba(96, 165, 250, 0.3); color: #94a3b8;
-            padding: 10px 20px; border-radius: 30px; cursor: pointer; font-family: 'Rajdhani', sans-serif;
-            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease;
+            padding: 8px 16px; border-radius: 30px; cursor: pointer; font-family: 'Rajdhani', sans-serif;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; font-size: 0.8rem;
         }
 
         .mode-btn:hover { background: rgba(96, 165, 250, 0.1); color: #fff; border-color: #60a5fa; }
@@ -61,9 +61,10 @@
 
         /* BREATH GUIDE */
         #breath-text {
-            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
-            font-family: 'Syncopate', sans-serif; font-size: 0.9rem; letter-spacing: 5px;
-            color: rgba(255,255,255,0.4); pointer-events: none; transition: opacity 1s;
+            position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Syncopate', sans-serif; font-size: 1.2rem; letter-spacing: 5px;
+            color: rgba(255,255,255,0.9); pointer-events: none; transition: opacity 0.5s;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5); width: 100%; text-align: center;
         }
     </style>
 </head>
@@ -82,14 +83,14 @@
             <div class="subtitle">Mourya.AI // Digital Dhyana Interface</div>
         </div>
         
-        <div id="breath-text">INHALE</div>
+        <div id="breath-text">READY</div>
 
         <div style="width: 100%; display: flex; justify-content: center;">
             <div id="controls">
-                <button class="mode-btn active" onclick="setMode('focus')">Deep Work (Gamma)</button>
-                <button class="mode-btn" onclick="setMode('relax')">Meditate (Theta)</button>
-                <button class="mode-btn" onclick="setMode('sleep')">Rest (Delta)</button>
-                <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 10px;"></div>
+                <button class="mode-btn active" onclick="setMode('focus')">Focus (Gamma)</button>
+                <button class="mode-btn" onclick="setMode('relax')">Relax (Theta)</button>
+                <button class="mode-btn" onclick="setMode('sleep')">Sleep (Delta)</button>
+                <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
                 <button class="mode-btn" style="border-color: #ef4444;" onclick="toggleMute()" id="mute-btn">STOP</button>
             </div>
         </div>
@@ -203,7 +204,7 @@
 
         // --- 3. LOGIC & ANIMATION ---
         let mode = 'focus';
-        let breathSpeed = 0.002;
+        let breathSpeed = 0.015; // TUNED FOR NATURAL BREATHING
         let time = 0;
 
         // MODES
@@ -213,18 +214,18 @@
             event.target.classList.add('active');
 
             if (mode === 'focus') {
-                audio.setFrequency(40, 432); // Gamma (Focus) - 40Hz beat
-                breathSpeed = 0.003; // Fast, energetic breath
+                audio.setFrequency(40, 432); 
+                breathSpeed = 0.018; // ~4 seconds per phase (Energetic)
                 coreMat.color.setHex(0x60a5fa); // Blue
                 particlesMat.color.setHex(0xa78bfa);
             } else if (mode === 'relax') {
-                audio.setFrequency(7, 200); // Theta (Meditation) - 7Hz beat
-                breathSpeed = 0.0015; // Slow, deep breath (4-7-8 rhythm)
+                audio.setFrequency(7, 200); 
+                breathSpeed = 0.012; // ~6 seconds per phase (Calm)
                 coreMat.color.setHex(0x34d399); // Green
                 particlesMat.color.setHex(0x6ee7b7);
             } else if (mode === 'sleep') {
-                audio.setFrequency(2, 100); // Delta (Sleep) - 2Hz beat
-                breathSpeed = 0.0008; // Very slow
+                audio.setFrequency(2, 100); 
+                breathSpeed = 0.008; // ~8-10 seconds per phase (Deep)
                 coreMat.color.setHex(0xf472b6); // Pink/Purple
                 particlesMat.color.setHex(0xfbcfe8);
             }
@@ -237,28 +238,34 @@
             time += breathSpeed;
 
             // Breathing Logic (Sine Wave)
-            const breath = Math.sin(time * 2) * 0.5 + 1.5; // Scale between 1 and 2
-            core.scale.set(breath, breath, breath);
+            const cycle = Math.sin(time); // Using simple time for smoother sine
+            const breathScale = (cycle * 0.5) + 1.5; // Scale between 1 and 2
+            
+            core.scale.set(breathScale, breathScale, breathScale);
             core.rotation.y += 0.005;
             core.rotation.z += 0.002;
 
             // Update Breath Text
             const breathText = document.getElementById('breath-text');
-            if (Math.sin(time * 2) > 0) {
+            
+            // Cycle: -1 to 1. 
+            // We want text to switch near the peaks/troughs, not instantly at 0.
+            
+            if (cycle > 0.2) {
                 breathText.innerText = "INHALE";
-                breathText.style.opacity = Math.sin(time * 2);
-            } else {
+                breathText.style.opacity = cycle; // Fade in with breath
+            } else if (cycle < -0.2) {
                 breathText.innerText = "EXHALE";
-                breathText.style.opacity = Math.abs(Math.sin(time * 2));
+                breathText.style.opacity = Math.abs(cycle); // Fade in with breath
+            } else {
+                // Hold briefly at transition
+                breathText.style.opacity = 0.3;
             }
 
             // Particle Physics
             particleSystem.rotation.y += 0.001;
             
-            // Draw Connections dynamically (only near particles)
-            // *Optimization: Only connecting subset to save CPU*
             const positions = particleSystem.geometry.attributes.position.array;
-            const linePositions = [];
             
             // Simple rotation effect on particles
             for(let i=0; i<count; i+=3) {
