@@ -3,428 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AETHER // The Neural Symphony</title>
+    <title>AETHER // Neural Resonance Engine</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&family=Syncopate:wght@700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Rajdhani:wght@300;500&display=swap');
-
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Rajdhani', sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #030712; font-family: 'Rajdhani', sans-serif; color: #e2e8f0; }
         canvas { display: block; }
         
+        /* UI OVERLAY */
         #ui-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 40px;
-            box-sizing: border-box;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; padding: 30px; box-sizing: border-box;
+            display: flex; flex-direction: column; justify-content: space-between;
+            z-index: 10; background: radial-gradient(circle at center, transparent 0%, rgba(3, 7, 18, 0.8) 100%);
         }
 
-        .hud-text {
-            color: rgba(255, 255, 255, 0.8);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(100, 200, 255, 0.5);
+        .header h1 {
+            font-family: 'Syncopate', sans-serif; font-size: 2rem; margin: 0;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .subtitle { font-size: 0.8rem; letter-spacing: 3px; text-transform: uppercase; color: #94a3b8; }
+
+        /* CONTROLS (Center Bottom) */
+        #controls {
+            pointer-events: auto; display: flex; gap: 15px; justify-content: center; align-items: center;
+            background: rgba(15, 23, 42, 0.6); padding: 15px 25px; border-radius: 50px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1);
+            margin-bottom: 20px;
         }
 
-        h1 {
-            font-family: 'Syncopate', sans-serif;
-            font-size: 3rem;
-            margin: 0;
-            background: linear-gradient(to right, #fff, #88ccff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .mode-btn {
+            background: transparent; border: 1px solid rgba(96, 165, 250, 0.3); color: #94a3b8;
+            padding: 10px 20px; border-radius: 30px; cursor: pointer; font-family: 'Rajdhani', sans-serif;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease;
         }
 
-        #start-screen {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            transition: opacity 1s ease;
-        }
-
-        .btn-enter {
-            margin-top: 30px;
-            padding: 15px 40px;
-            background: transparent;
-            border: 1px solid rgba(100, 200, 255, 0.5);
-            color: #fff;
-            font-family: 'Syncopate', sans-serif;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 3px;
-        }
-
-        .btn-enter:hover {
-            background: rgba(100, 200, 255, 0.2);
-            box-shadow: 0 0 20px rgba(100, 200, 255, 0.6);
-            transform: scale(1.05);
-        }
-
-        #stats-container {
-            display: flex;
-            gap: 20px;
-            font-size: 0.9rem;
-        }
-
-        .stat-box {
-            border-left: 2px solid rgba(100, 200, 255, 0.5);
-            padding-left: 10px;
-        }
+        .mode-btn:hover { background: rgba(96, 165, 250, 0.1); color: #fff; border-color: #60a5fa; }
         
-        .instruction {
-            font-size: 0.8rem;
-            opacity: 0.6;
-            animation: pulse 2s infinite;
+        .mode-btn.active {
+            background: #2563eb; color: #fff; border-color: #2563eb;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
         }
 
-        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
+        /* START SCREEN */
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #030712; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100; transition: opacity 0.8s ease;
+        }
+
+        #init-btn {
+            margin-top: 30px; padding: 15px 50px; background: transparent;
+            border: 2px solid #60a5fa; color: #60a5fa; font-family: 'Syncopate', sans-serif;
+            font-weight: 700; cursor: pointer; transition: all 0.3s; letter-spacing: 2px;
+        }
+        #init-btn:hover { background: #60a5fa; color: #000; box-shadow: 0 0 30px rgba(96, 165, 250, 0.6); }
+
+        /* BREATH GUIDE */
+        #breath-text {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Syncopate', sans-serif; font-size: 0.9rem; letter-spacing: 5px;
+            color: rgba(255,255,255,0.4); pointer-events: none; transition: opacity 1s;
+        }
     </style>
 </head>
 <body>
 
-    <div id="start-screen">
-        <h1 style="font-size: 4vw;">PROJECT AETHER</h1>
-        <p class="hud-text" style="margin-top: 10px; opacity: 0.7;">Generative Audio-Visual Neural Network</p>
-        <button class="btn-enter" id="init-btn">INITIALIZE SYSTEM</button>
-        <p style="margin-top: 20px; color: #555; font-size: 0.8rem;">Headphones Recommended</p>
+    <div id="start-overlay">
+        <h1 style="font-family: 'Syncopate'; color: white; font-size: 3rem;">AETHER</h1>
+        <p style="color: #94a3b8; margin-top: 10px; letter-spacing: 2px;">NEURAL RESONANCE & FOCUS ENGINE</p>
+        <button id="init-btn">INITIALIZE SYSTEM</button>
+        <p style="margin-top: 20px; font-size: 0.8rem; color: #475569;">[ HEADPHONES REQUIRED FOR BINAURAL AUDIO ]</p>
     </div>
 
     <div id="ui-layer">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h1 style="font-size: 1.5rem;">AETHER</h1>
-                <p class="hud-text" style="font-size: 0.7rem;">Mourya.AI // Concept Build</p>
-            </div>
-            <div class="stat-box">
-                <div class="hud-text" style="font-size: 0.7rem;">Neural Density</div>
-                <div id="node-count" style="font-weight: bold; font-size: 1.2rem; color: #fff;">0</div>
-            </div>
+        <div class="header">
+            <h1>AETHER</h1>
+            <div class="subtitle">Mourya.AI // Digital Dhyana Interface</div>
         </div>
+        
+        <div id="breath-text">INHALE</div>
 
-        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <div id="stats-container">
-                <div class="stat-box">
-                    <div class="hud-text" style="font-size: 0.6rem;">Frequency</div>
-                    <div id="freq-readout">0 Hz</div>
-                </div>
-                <div class="stat-box">
-                    <div class="hud-text" style="font-size: 0.6rem;">Harmonics</div>
-                    <div id="harm-readout">Stable</div>
-                </div>
-            </div>
-            <div class="instruction hud-text">
-                [ DRAG TO CREATE ] [ CLICK TO PULSE ]
+        <div style="width: 100%; display: flex; justify-content: center;">
+            <div id="controls">
+                <button class="mode-btn active" onclick="setMode('focus')">Deep Work (Gamma)</button>
+                <button class="mode-btn" onclick="setMode('relax')">Meditate (Theta)</button>
+                <button class="mode-btn" onclick="setMode('sleep')">Rest (Delta)</button>
+                <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 10px;"></div>
+                <button class="mode-btn" style="border-color: #ef4444;" onclick="toggleMute()" id="mute-btn">STOP</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const CONFIG = {
-            particleCount: 150,
-            connectionDistance: 150,
-            mouseInfluenceRadius: 250,
-            baseColor: 0x00aaff,
-            pulseColor: 0xff0055
-        };
-
-        // --- AUDIO SYSTEM (Web Audio API) ---
-        class AudioEngine {
+        // --- 1. NEURAL AUDIO ENGINE (Binaural Beats) ---
+        class NeuralEngine {
             constructor() {
                 this.ctx = null;
-                this.oscillators = [];
+                this.leftOsc = null;
+                this.rightOsc = null;
                 this.gainNode = null;
-                this.filter = null;
-                this.isInitialized = false;
+                this.isMuted = false;
+                this.currentMode = 'focus';
             }
 
             init() {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
                 this.gainNode = this.ctx.createGain();
-                this.gainNode.gain.value = 0.15; // Master volume
-                
-                // Reverb effect (Convolver)
-                this.reverb = this.ctx.createConvolver();
-                this.reverbGain = this.ctx.createGain();
-                this.reverbGain.gain.value = 0.6;
-
-                // Simple impulse response for reverb
-                const rate = this.ctx.sampleRate;
-                const length = rate * 3; // 3 seconds reverb
-                const impulse = this.ctx.createBuffer(2, length, rate);
-                for (let i = 0; i < 2; i++) {
-                    const channel = impulse.getChannelData(i);
-                    for (let j = 0; j < length; j++) {
-                        channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 2);
-                    }
-                }
-                this.reverb.buffer = impulse;
-
-                this.filter = this.ctx.createBiquadFilter();
-                this.filter.type = 'lowpass';
-                this.filter.frequency.value = 1000;
-
-                // Chain: Source -> Filter -> Gain -> Reverb -> Destination
-                this.filter.connect(this.gainNode);
+                this.gainNode.gain.value = 0.1; // Master volume
                 this.gainNode.connect(this.ctx.destination);
-                this.gainNode.connect(this.reverb);
-                this.reverb.connect(this.reverbGain);
-                this.reverbGain.connect(this.ctx.destination);
-
-                this.createDrone();
-                this.isInitialized = true;
+                this.startOscillators();
             }
 
-            createDrone() {
-                // Create 3 oscillators for a chord
-                const freqs = [110, 164.81, 196]; // A major ish
-                freqs.forEach(f => {
-                    const osc = this.ctx.createOscillator();
-                    osc.type = 'sine';
-                    osc.frequency.value = f;
-                    osc.connect(this.filter);
-                    osc.start();
-                    this.oscillators.push(osc);
-                });
+            startOscillators() {
+                this.leftOsc = this.ctx.createOscillator();
+                this.rightOsc = this.ctx.createOscillator();
+                
+                // Stereo Panning
+                const pannerLeft = this.ctx.createStereoPanner();
+                const pannerRight = this.ctx.createStereoPanner();
+                pannerLeft.pan.value = -1; // Left Ear
+                pannerRight.pan.value = 1; // Right Ear
+
+                this.leftOsc.connect(pannerLeft);
+                this.rightOsc.connect(pannerRight);
+                
+                pannerLeft.connect(this.gainNode);
+                pannerRight.connect(this.gainNode);
+
+                this.leftOsc.start();
+                this.rightOsc.start();
+                
+                this.setFrequency(40, 440); // Default Focus
             }
 
-            update(mouseX, mouseY) {
-                if (!this.isInitialized) return;
-                
-                // Modulate filter and pitch based on mouse position
-                const width = window.innerWidth;
-                const height = window.innerHeight;
-
-                const freqNorm = (mouseX / width) * 2000 + 200; // Filter freq
-                const detuneNorm = (mouseY / height) * 50; // Detune
-
-                // Smooth transition
-                this.filter.frequency.setTargetAtTime(freqNorm, this.ctx.currentTime, 0.1);
-                
-                this.oscillators.forEach((osc, i) => {
-                    osc.detune.setTargetAtTime(detuneNorm * (i % 2 === 0 ? 1 : -1), this.ctx.currentTime, 0.1);
-                });
-
-                // Update UI
-                document.getElementById('freq-readout').innerText = Math.round(freqNorm) + " Hz";
+            setFrequency(beatFreq, carrierFreq) {
+                // Binaural Logic: Left = Carrier, Right = Carrier + Beat
+                const now = this.ctx.currentTime;
+                this.leftOsc.frequency.linearRampToValueAtTime(carrierFreq, now + 1);
+                this.rightOsc.frequency.linearRampToValueAtTime(carrierFreq + beatFreq, now + 1);
             }
 
-            triggerPulse() {
-                if (!this.isInitialized) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(110, this.ctx.currentTime + 0.5);
-                
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
-
-                osc.connect(gain);
-                gain.connect(this.reverb);
-                gain.connect(this.ctx.destination);
-                
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.5);
-                
-                document.getElementById('harm-readout').innerText = "PULSE DETECTED";
-                setTimeout(() => document.getElementById('harm-readout').innerText = "Stable", 500);
+            toggleMute() {
+                if(this.isMuted) {
+                    this.gainNode.gain.setTargetAtTime(0.1, this.ctx.currentTime, 0.5);
+                    this.isMuted = false;
+                    document.getElementById('mute-btn').innerText = "STOP";
+                } else {
+                    this.gainNode.gain.setTargetAtTime(0, this.ctx.currentTime, 0.5);
+                    this.isMuted = true;
+                    document.getElementById('mute-btn').innerText = "RESUME";
+                }
             }
         }
 
-        const audio = new AudioEngine();
+        const audio = new NeuralEngine();
 
-        // --- 3D VISUALS (Three.js) ---
+        // --- 2. 3D VISUALS (Digital Prana) ---
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.001);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-        camera.position.z = 400;
+        scene.fog = new THREE.FogExp2(0x030712, 0.002);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 100;
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Particle System
-        const particles = new THREE.BufferGeometry();
-        const particlePositions = new Float32Array(CONFIG.particleCount * 3);
-        const particleVelocities = [];
-
-        for (let i = 0; i < CONFIG.particleCount; i++) {
-            particlePositions[i * 3] = (Math.random() - 0.5) * 800;
-            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 800;
-            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 800;
-            
-            particleVelocities.push({
-                x: (Math.random() - 0.5) * 1.5,
-                y: (Math.random() - 0.5) * 1.5,
-                z: (Math.random() - 0.5) * 1.5
-            });
-        }
-
-        particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-        
-        // Textures
-        const loader = new THREE.TextureLoader();
-        const sprite = loader.load('https://threejs.org/examples/textures/sprites/disc.png');
-
-        const material = new THREE.PointsMaterial({
-            size: 6,
-            color: CONFIG.baseColor,
-            map: sprite,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
+        // Core Breathing Sphere
+        const coreGeo = new THREE.IcosahedronGeometry(10, 2);
+        const coreMat = new THREE.MeshBasicMaterial({ 
+            color: 0x60a5fa, wireframe: true, transparent: true, opacity: 0.5 
         });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        scene.add(core);
 
-        const particleSystem = new THREE.Points(particles, material);
+        // Neural Particles
+        const particlesGeo = new THREE.BufferGeometry();
+        const count = 800;
+        const posArray = new Float32Array(count * 3);
+        
+        for(let i=0; i<count*3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 300;
+        }
+        
+        particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMat = new THREE.PointsMaterial({
+            size: 1.5, color: 0xa78bfa, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
+        });
+        const particleSystem = new THREE.Points(particlesGeo, particlesMat);
         scene.add(particleSystem);
 
-        // Lines (Connections)
-        const lineMaterial = new THREE.LineBasicMaterial({
-            color: CONFIG.baseColor,
-            transparent: true,
-            opacity: 0.3,
-            blending: THREE.AdditiveBlending
-        });
-
-        const linesGeometry = new THREE.BufferGeometry();
-        const lines = new THREE.LineSegments(linesGeometry, lineMaterial);
+        // Neural Connections (Lines)
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.15 });
+        const lineGeo = new THREE.BufferGeometry();
+        const lines = new THREE.LineSegments(lineGeo, lineMat);
         scene.add(lines);
 
-        // Mouse Interaction
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2(9999, 9999); // Start off screen
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Intersection plane
+        // --- 3. LOGIC & ANIMATION ---
+        let mode = 'focus';
+        let breathSpeed = 0.002;
+        let time = 0;
 
-        // --- ANIMATION LOOP ---
+        // MODES
+        window.setMode = (selectedMode) => {
+            mode = selectedMode;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (mode === 'focus') {
+                audio.setFrequency(40, 432); // Gamma (Focus) - 40Hz beat
+                breathSpeed = 0.003; // Fast, energetic breath
+                coreMat.color.setHex(0x60a5fa); // Blue
+                particlesMat.color.setHex(0xa78bfa);
+            } else if (mode === 'relax') {
+                audio.setFrequency(7, 200); // Theta (Meditation) - 7Hz beat
+                breathSpeed = 0.0015; // Slow, deep breath (4-7-8 rhythm)
+                coreMat.color.setHex(0x34d399); // Green
+                particlesMat.color.setHex(0x6ee7b7);
+            } else if (mode === 'sleep') {
+                audio.setFrequency(2, 100); // Delta (Sleep) - 2Hz beat
+                breathSpeed = 0.0008; // Very slow
+                coreMat.color.setHex(0xf472b6); // Pink/Purple
+                particlesMat.color.setHex(0xfbcfe8);
+            }
+        };
+
+        window.toggleMute = () => audio.toggleMute();
+
         function animate() {
             requestAnimationFrame(animate);
+            time += breathSpeed;
 
-            // Audio Update
-            // audio.update(mouseX pixel coords handled in event listener);
+            // Breathing Logic (Sine Wave)
+            const breath = Math.sin(time * 2) * 0.5 + 1.5; // Scale between 1 and 2
+            core.scale.set(breath, breath, breath);
+            core.rotation.y += 0.005;
+            core.rotation.z += 0.002;
 
-            // Physics Update
-            const positions = particleSystem.geometry.attributes.position.array;
-            let linePositions = [];
-            let connections = 0;
-
-            // Get mouse position in 3D space
-            raycaster.setFromCamera(mouse, camera);
-            const target = new THREE.Vector3();
-            raycaster.ray.intersectPlane(plane, target);
-
-            for (let i = 0; i < CONFIG.particleCount; i++) {
-                // Move particles
-                positions[i * 3] += particleVelocities[i].x;
-                positions[i * 3 + 1] += particleVelocities[i].y;
-                positions[i * 3 + 2] += particleVelocities[i].z;
-
-                // Boundary bounce
-                if (Math.abs(positions[i * 3]) > 400) particleVelocities[i].x *= -1;
-                if (Math.abs(positions[i * 3 + 1]) > 400) particleVelocities[i].y *= -1;
-                if (Math.abs(positions[i * 3 + 2]) > 400) particleVelocities[i].z *= -1;
-
-                // Mouse interaction (Repulsion/Attraction)
-                if (target) {
-                    const dx = positions[i * 3] - target.x;
-                    const dy = positions[i * 3 + 1] - target.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < CONFIG.mouseInfluenceRadius) {
-                        // Gentle attraction
-                        particleVelocities[i].x -= dx * 0.0005;
-                        particleVelocities[i].y -= dy * 0.0005;
-                    }
-                }
-
-                // Connections
-                for (let j = i + 1; j < CONFIG.particleCount; j++) {
-                    const dx = positions[i * 3] - positions[j * 3];
-                    const dy = positions[i * 3 + 1] - positions[j * 3 + 1];
-                    const dz = positions[i * 3 + 2] - positions[j * 3 + 2];
-                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-                    if (dist < CONFIG.connectionDistance) {
-                        linePositions.push(
-                            positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2],
-                            positions[j * 3], positions[j * 3 + 1], positions[j * 3 + 2]
-                        );
-                        connections++;
-                    }
-                }
+            // Update Breath Text
+            const breathText = document.getElementById('breath-text');
+            if (Math.sin(time * 2) > 0) {
+                breathText.innerText = "INHALE";
+                breathText.style.opacity = Math.sin(time * 2);
+            } else {
+                breathText.innerText = "EXHALE";
+                breathText.style.opacity = Math.abs(Math.sin(time * 2));
             }
 
-            particleSystem.geometry.attributes.position.needsUpdate = true;
-
-            // Update lines
-            lines.geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+            // Particle Physics
+            particleSystem.rotation.y += 0.001;
             
-            // Rotation
-            scene.rotation.y += 0.002;
-            scene.rotation.x += 0.001;
-
-            // Stats
-            document.getElementById('node-count').innerText = connections;
+            // Draw Connections dynamically (only near particles)
+            // *Optimization: Only connecting subset to save CPU*
+            const positions = particleSystem.geometry.attributes.position.array;
+            const linePositions = [];
+            
+            // Simple rotation effect on particles
+            for(let i=0; i<count; i+=3) {
+               // Gentle float
+               positions[i+1] += Math.sin(time + positions[i]) * 0.02;
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
 
             renderer.render(scene, camera);
         }
 
-        // --- EVENT LISTENERS ---
+        // Init
+        document.getElementById('init-btn').addEventListener('click', () => {
+            audio.init();
+            document.getElementById('start-overlay').style.opacity = 0;
+            setTimeout(() => document.getElementById('start-overlay').style.display = 'none', 800);
+            animate();
+        });
+
+        // Resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        document.addEventListener('mousemove', (event) => {
-            event.preventDefault();
-            // Normalized for Three.js
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            
-            // Raw for Audio
-            if(audio.isInitialized) {
-                audio.update(event.clientX, event.clientY);
-            }
-        });
-
-        document.addEventListener('click', () => {
-            if(!audio.isInitialized) return;
-            audio.triggerPulse();
-            
-            // Visual Boom
-            material.color.setHex(CONFIG.pulseColor);
-            lineMaterial.color.setHex(CONFIG.pulseColor);
-            setTimeout(() => {
-                material.color.setHex(CONFIG.baseColor);
-                lineMaterial.color.setHex(CONFIG.baseColor);
-            }, 300);
-        });
-
-        // Initialize
-        document.getElementById('init-btn').addEventListener('click', () => {
-            audio.init();
-            const overlay = document.getElementById('start-screen');
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-            }, 1000);
-            animate();
         });
 
     </script>
