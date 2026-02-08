@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AETHER // The Neural Symphony</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Rajdhani:wght@300;500&display=swap');
+
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Rajdhani', sans-serif; }
+        canvas { display: block; }
+        
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .hud-text {
+            color: rgba(255, 255, 255, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(100, 200, 255, 0.5);
+        }
+
+        h1 {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 3rem;
+            margin: 0;
+            background: linear-gradient(to right, #fff, #88ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #start-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 1s ease;
+        }
+
+        .btn-enter {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: transparent;
+            border: 1px solid rgba(100, 200, 255, 0.5);
+            color: #fff;
+            font-family: 'Syncopate', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 3px;
+        }
+
+        .btn-enter:hover {
+            background: rgba(100, 200, 255, 0.2);
+            box-shadow: 0 0 20px rgba(100, 200, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        #stats-container {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+        }
+
+        .stat-box {
+            border-left: 2px solid rgba(100, 200, 255, 0.5);
+            padding-left: 10px;
+        }
+        
+        .instruction {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1 style="font-size: 4vw;">PROJECT AETHER</h1>
+        <p class="hud-text" style="margin-top: 10px; opacity: 0.7;">Generative Audio-Visual Neural Network</p>
+        <button class="btn-enter" id="init-btn">INITIALIZE SYSTEM</button>
+        <p style="margin-top: 20px; color: #555; font-size: 0.8rem;">Headphones Recommended</p>
+    </div>
+
+    <div id="ui-layer">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h1 style="font-size: 1.5rem;">AETHER</h1>
+                <p class="hud-text" style="font-size: 0.7rem;">Mourya.AI // Concept Build</p>
+            </div>
+            <div class="stat-box">
+                <div class="hud-text" style="font-size: 0.7rem;">Neural Density</div>
+                <div id="node-count" style="font-weight: bold; font-size: 1.2rem; color: #fff;">0</div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div id="stats-container">
+                <div class="stat-box">
+                    <div class="hud-text" style="font-size: 0.6rem;">Frequency</div>
+                    <div id="freq-readout">0 Hz</div>
+                </div>
+                <div class="stat-box">
+                    <div class="hud-text" style="font-size: 0.6rem;">Harmonics</div>
+                    <div id="harm-readout">Stable</div>
+                </div>
+            </div>
+            <div class="instruction hud-text">
+                [ DRAG TO CREATE ] [ CLICK TO PULSE ]
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const CONFIG = {
+            particleCount: 150,
+            connectionDistance: 150,
+            mouseInfluenceRadius: 250,
+            baseColor: 0x00aaff,
+            pulseColor: 0xff0055
+        };
+
+        // --- AUDIO SYSTEM (Web Audio API) ---
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.oscillators = [];
+                this.gainNode = null;
+                this.filter = null;
+                this.isInitialized = false;
+            }
+
+            init() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.gainNode = this.ctx.createGain();
+                this.gainNode.gain.value = 0.15; // Master volume
+                
+                // Reverb effect (Convolver)
+                this.reverb = this.ctx.createConvolver();
+                this.reverbGain = this.ctx.createGain();
+                this.reverbGain.gain.value = 0.6;
+
+                // Simple impulse response for reverb
+                const rate = this.ctx.sampleRate;
+                const length = rate * 3; // 3 seconds reverb
+                const impulse = this.ctx.createBuffer(2, length, rate);
+                for (let i = 0; i < 2; i++) {
+                    const channel = impulse.getChannelData(i);
+                    for (let j = 0; j < length; j++) {
+                        channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 2);
+                    }
+                }
+                this.reverb.buffer = impulse;
+
+                this.filter = this.ctx.createBiquadFilter();
+                this.filter.type = 'lowpass';
+                this.filter.frequency.value = 1000;
+
+                // Chain: Source -> Filter -> Gain -> Reverb -> Destination
+                this.filter.connect(this.gainNode);
+                this.gainNode.connect(this.ctx.destination);
+                this.gainNode.connect(this.reverb);
+                this.reverb.connect(this.reverbGain);
+                this.reverbGain.connect(this.ctx.destination);
+
+                this.createDrone();
+                this.isInitialized = true;
+            }
+
+            createDrone() {
+                // Create 3 oscillators for a chord
+                const freqs = [110, 164.81, 196]; // A major ish
+                freqs.forEach(f => {
+                    const osc = this.ctx.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.value = f;
+                    osc.connect(this.filter);
+                    osc.start();
+                    this.oscillators.push(osc);
+                });
+            }
+
+            update(mouseX, mouseY) {
+                if (!this.isInitialized) return;
+                
+                // Modulate filter and pitch based on mouse position
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                const freqNorm = (mouseX / width) * 2000 + 200; // Filter freq
+                const detuneNorm = (mouseY / height) * 50; // Detune
+
+                // Smooth transition
+                this.filter.frequency.setTargetAtTime(freqNorm, this.ctx.currentTime, 0.1);
+                
+                this.oscillators.forEach((osc, i) => {
+                    osc.detune.setTargetAtTime(detuneNorm * (i % 2 === 0 ? 1 : -1), this.ctx.currentTime, 0.1);
+                });
+
+                // Update UI
+                document.getElementById('freq-readout').innerText = Math.round(freqNorm) + " Hz";
+            }
+
+            triggerPulse() {
+                if (!this.isInitialized) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110, this.ctx.currentTime + 0.5);
+                
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+                osc.connect(gain);
+                gain.connect(this.reverb);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+                
+                document.getElementById('harm-readout').innerText = "PULSE DETECTED";
+                setTimeout(() => document.getElementById('harm-readout').innerText = "Stable", 500);
+            }
+        }
+
+        const audio = new AudioEngine();
+
+        // --- 3D VISUALS (Three.js) ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.001);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+        camera.position.z = 400;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Particle System
+        const particles = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(CONFIG.particleCount * 3);
+        const particleVelocities = [];
+
+        for (let i = 0; i < CONFIG.particleCount; i++) {
+            particlePositions[i * 3] = (Math.random() - 0.5) * 800;
+            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 800;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 800;
+            
+            particleVelocities.push({
+                x: (Math.random() - 0.5) * 1.5,
+                y: (Math.random() - 0.5) * 1.5,
+                z: (Math.random() - 0.5) * 1.5
+            });
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        
+        // Textures
+        const loader = new THREE.TextureLoader();
+        const sprite = loader.load('https://threejs.org/examples/textures/sprites/disc.png');
+
+        const material = new THREE.PointsMaterial({
+            size: 6,
+            color: CONFIG.baseColor,
+            map: sprite,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particles, material);
+        scene.add(particleSystem);
+
+        // Lines (Connections)
+        const lineMaterial = new THREE.LineBasicMaterial({
+            color: CONFIG.baseColor,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending
+        });
+
+        const linesGeometry = new THREE.BufferGeometry();
+        const lines = new THREE.LineSegments(linesGeometry, lineMaterial);
+        scene.add(lines);
+
+        // Mouse Interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2(9999, 9999); // Start off screen
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Intersection plane
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Audio Update
+            // audio.update(mouseX pixel coords handled in event listener);
+
+            // Physics Update
+            const positions = particleSystem.geometry.attributes.position.array;
+            let linePositions = [];
+            let connections = 0;
+
+            // Get mouse position in 3D space
+            raycaster.setFromCamera(mouse, camera);
+            const target = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, target);
+
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                // Move particles
+                positions[i * 3] += particleVelocities[i].x;
+                positions[i * 3 + 1] += particleVelocities[i].y;
+                positions[i * 3 + 2] += particleVelocities[i].z;
+
+                // Boundary bounce
+                if (Math.abs(positions[i * 3]) > 400) particleVelocities[i].x *= -1;
+                if (Math.abs(positions[i * 3 + 1]) > 400) particleVelocities[i].y *= -1;
+                if (Math.abs(positions[i * 3 + 2]) > 400) particleVelocities[i].z *= -1;
+
+                // Mouse interaction (Repulsion/Attraction)
+                if (target) {
+                    const dx = positions[i * 3] - target.x;
+                    const dy = positions[i * 3 + 1] - target.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < CONFIG.mouseInfluenceRadius) {
+                        // Gentle attraction
+                        particleVelocities[i].x -= dx * 0.0005;
+                        particleVelocities[i].y -= dy * 0.0005;
+                    }
+                }
+
+                // Connections
+                for (let j = i + 1; j < CONFIG.particleCount; j++) {
+                    const dx = positions[i * 3] - positions[j * 3];
+                    const dy = positions[i * 3 + 1] - positions[j * 3 + 1];
+                    const dz = positions[i * 3 + 2] - positions[j * 3 + 2];
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                    if (dist < CONFIG.connectionDistance) {
+                        linePositions.push(
+                            positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2],
+                            positions[j * 3], positions[j * 3 + 1], positions[j * 3 + 2]
+                        );
+                        connections++;
+                    }
+                }
+            }
+
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+
+            // Update lines
+            lines.geometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+            
+            // Rotation
+            scene.rotation.y += 0.002;
+            scene.rotation.x += 0.001;
+
+            // Stats
+            document.getElementById('node-count').innerText = connections;
+
+            renderer.render(scene, camera);
+        }
+
+        // --- EVENT LISTENERS ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            event.preventDefault();
+            // Normalized for Three.js
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Raw for Audio
+            if(audio.isInitialized) {
+                audio.update(event.clientX, event.clientY);
+            }
+        });
+
+        document.addEventListener('click', () => {
+            if(!audio.isInitialized) return;
+            audio.triggerPulse();
+            
+            // Visual Boom
+            material.color.setHex(CONFIG.pulseColor);
+            lineMaterial.color.setHex(CONFIG.pulseColor);
+            setTimeout(() => {
+                material.color.setHex(CONFIG.baseColor);
+                lineMaterial.color.setHex(CONFIG.baseColor);
+            }, 300);
+        });
+
+        // Initialize
+        document.getElementById('init-btn').addEventListener('click', () => {
+            audio.init();
+            const overlay = document.getElementById('start-screen');
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 1000);
+            animate();
+        });
+
+    </script>
+</body>
+</html>
